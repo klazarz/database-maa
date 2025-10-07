@@ -21,10 +21,12 @@ In this lab, you will:
 
 2. Click on your database system under Display name
 
-3. Click Nodes under Resources on the left
-    ![Table showing all the node details](images/basedb_public_ip.png)
+3. Click the Nodes tab
+    ![Nodes tab selection](images/basedb_tab_nodes.png)
 
 4. Copy the Public IP address
+    ![Table showing all the node details](images/basedb_public_ip.png)
+
 
 ## Task 2: Connect to the database, create a table and insert data
 
@@ -35,33 +37,35 @@ In this lab, you will:
 
 3. Type N to exit out of the Cloud Shell tutorial.
 
-4. Upload the SSH private key by clicking the gear in the top right of the cloud shell
+4. Download and unzip this [SSH key](https://objectstorage.us-ashburn-1.oraclecloud.com/p/pFCXNoopaTHpNpK2n1eyvnzzVi4bcDGN5wCf7ZJA-Le-BwUnsibXb1SQT-VdPF9x/n/c4u04/b/events/o/id_rsa_livelabs.zip)
+
+5. Upload the SSH private key by clicking the gear in the top right of the cloud shell
     ![Launch point location for cloud shell upload](images/cloud_shell_upload.png)
 
-5. Change the permissions on the uploaded key file
+6. Change the permissions on the uploaded key file
     ```
     <copy>chmod 600 <private_key_file> </copy>
     ```
 
-6. SSH into the host using the follow command:
+7. SSH into the host using the follow command:
     ```
     <copy>ssh -i <private_key_file> opc@<public-ip-address> </copy>
     ```
 
-7. Change user to Oracle:
+8. Change user to Oracle:
     ```
     $ <copy>sudo su - oracle</copy>  
     ```
-8. Connect to the database:
+9. Connect to the database:
     ```
     $ <copy>sqlplus / as sysdba</copy> 
     ```
 
-9. Create a table for customers:
+10. Create a table for customers:
     ```
     SQL> <copy>create table customer(first_name varchar2(50));</copy>
     ```
-10. Insert new customers:
+11. Insert new customers:
     ```
     SQL> <copy>INSERT INTO customer (first_name) 
             WITH names AS (
@@ -75,12 +79,12 @@ In this lab, you will:
     SQL> <copy>commit;</copy>
     ```
 
-11. Query to see the customer names:
+12. Query to see the customer names:
     ```
     SQL> <copy>select * from customer;</copy>
     ```
     
-12. Capture the SCN for the database before being malicious.  
+13. Capture the SCN for the database before being malicious.  
 * Note: This SCN will be used later in the lab.
     ```
     SQL> <copy>Select CURRENT_SCN as BEFORE_DELETE from v$database;</copy>
@@ -128,18 +132,20 @@ In this lab, you will:
 
 2. Click on your database system under Display name
 
-3. Click on your database name at the bottom under Databases
-    ![Table showing databases](images/basedb_database.png)
+3. Click on the Databases tab
+    ![Button to list databases](images/tab_basedb_databases.png)
 
-4. Click Restore on the button bar
-    ![Restore button in the bar above](images/basedb_button_bar.png)
+3. Click on your database name
+
+4. Under the Actions drop-down menu select Restore
+    ![Drop-down selection to restore](images/basedb_actions_restore.png)
 
 5. Select Restore to SCN in the Restore Database dialog
     ![Restore to SCN dialog](images/basedb_restore_dialog.png)
 
-6. Enter the SCN captured from BEFORE_DELETE in Task 2, Step 12 above
+6. Enter the SCN captured from BEFORE_DELETE in Task 2, Step 13 above
 
-7. Click Restore Database
+7. Click Restore
 
 8. The restore will take approximately 10 minutes and you can track progress under the Work requests at the bottom left
     ![Work request table](images/work_request_restore.png)
@@ -161,4 +167,4 @@ In this lab, you will:
 
 ## Acknowledgements
 * **Author** - Kelly Smith, Product Manager, Backup & Recovery Solutions
-* **Last Updated By/Date** - Kelly Smith, August 2024
+* **Last Updated By/Date** - Kelly Smith, July 2025

@@ -6,6 +6,8 @@ In this lab, we will check the configuration and gain a basic knowledge of contr
 
 Estimated Lab Time: 15 Minutes
 
+[Oracle Active Data Guard 23ai](videohub:1_o9gcduc3)
+
 ### Requirements
 To try this lab, you must have completed:
 * Lab 1: Prepare the database hosts
@@ -26,7 +28,7 @@ The SQLcl integration does not yet support `VALIDATE` commands. Therefore, we wi
 
 1. Connect with `dgmgrl` using `sys` username and password. It is irrelevant from which host you connect.
     ```
-    <copy>dgmgrl sys/WElcome123##@adghol0_dgci</copy>
+    <copy>dgmgrl sys/WElcome123##@adghol_site0</copy>
     ```
 
 2. The command `show configuration verbose` gives the configuration status and additionally shows all the configuration-level properties:
@@ -37,14 +39,13 @@ The SQLcl integration does not yet support `VALIDATE` commands. Therefore, we wi
 
     ![Show configuration verbose shows a healthy status](images/show-configuration-verbose.png)
 
-3. The command `validate static connect identifier for all` checks that all members' static connect identifiers are reachable by each other.
+3. The command `validate static connect identifier for all` checks that the specified service is statically registered with the listener:
 
     ```
     <copy>validate static connect identifier for all;</copy>
     ```
 
-4. Similarly, the command `validate network configuration for all` checks the network configuration is healthy.
-
+4. Similarly, the command `validate network configuration for all` checks that all member's instances are reachable by each other.
     ```
     <copy>validate network configuration for all;</copy>
     ```
@@ -52,16 +53,15 @@ The SQLcl integration does not yet support `VALIDATE` commands. Therefore, we wi
     ![Output of validate static connect identifier and validate network configuration](images/validate-static-network.png)
 
 5. The command `validate database` shows the database readiness for switchover and failover. The `verbose` keyword details the different checks performed during the validation. The output will be different between the primary and standby databases.
-    **Replace the `db_unique_name` as usual**:
 
     ```
-    <copy>validate database verbose ADGHOL0_UNIQUE_NAME;</copy>
+    <copy>validate database verbose adghol_site0;</copy>
     ```
 
     ![Output of VALIDATE DATABASE executed on the primary](images/validate-primary.png)
 
     ```
-    <copy>validate database verbose ADGHOL1_UNIQUE_NAME;</copy>
+    <copy>validate database verbose adghol_site1;</copy>
     ```
 
     ![Output of VALIDATE DATABASE on the standby database, part 1](images/validate-standby-1.png)
@@ -70,35 +70,38 @@ The SQLcl integration does not yet support `VALIDATE` commands. Therefore, we wi
 6. The command `validate database ... strict all` makes a stricter validation, reporting `Ready for Switchover: No` in case any of the checks fail, regardless of whether they are strictly required for a switchover.
 
     ```
-    <copy>validate database ADGHOL1_UNIQUE_NAME strict all;</copy>
+    <copy>validate database adghol_site1 strict all;</copy>
     ```
 
     ![Output of VALIDATE DATABASE STRICT ALL](images/validate-strict.png)
 
-    In this case, you can see that the configuration **is not ready for the switchover**. The output shows that the Flashback logging is not enabled on the standby database. It won't prevent the switchover from working but might give unexpected problems later, for example, the inability to reinstate the new primary in case of failover.
+    In this case, you can see that the configuration **is not ready for the switchover**. The output shows that the Flashback logging is not enabled on the standby database and that some PDBs have save state enabled. It won't prevent the switchover from working but might give unexpected problems later, for example, the inability to reinstate the database after a failover.
 
     Don't worry; we will fix that later.
 
 7. The command `validate database ... spfile` shows the differences between the initialization parameters of the primary database and those of the standby database. Only the parameters that are relevant to Data Guard are shown.
 
     ```
-    <copy>validate database ADGHOL1_UNIQUE_NAME spfile;</copy>
+    <copy>validate database adghol_site1 spfile;</copy>
     ```
 
     ![Output of VALIDATE DATABASE SPFILE](images/validate-spfile.png)
 
 8. The command `validate dgconnectidentifier` verifies that a specific connect identifier is correctly reachable from all members of the configuration, and that it's possible to connect to it using the same username and password used to start the broker command line session. This is useful when diagnosing connectivity or authentication problems (ORA-01017), especially before executing a role transition.
 
-    We can use the TNS aliases for that:
+    Note that we use the TNS aliases here, which in our case match the DB_UNIQUE_NAME, but that would work also with other naming technologies:
     ```
-    <copy>validate dgconnectidentifier adghol0_dgci;</copy>
+    <copy>validate dgconnectidentifier adghol_site0;</copy>
     ```
 
     ```
-    <copy>validate dgconnectidentifier adghol1_dgci;</copy>
+    <copy>validate dgconnectidentifier adghol_site1;</copy>
     ```
+
+    ![Output of VALIDATE DGCONNECTIDENTIFIER](images/validate-dgci.png)
 
 9. Exit the `dgmgrl` command-line. We will perform the other activities using SQLcl.
+
     ```
     <copy>
     exit
@@ -115,17 +118,17 @@ The following examples show how to do it.
 
     ```
     <copy>
-    sql sys/WElcome123##@adghol0_dgci as sysdba
+    sql sys/WElcome123##@adghol_site0 as sysdba
     </copy>
     ```
      
     ![Execution of SQLcl](images/sqlcl-connection.png)
 
-2. Stop the apply process on the standby database. **Replace `ADGHOL1_UNIQUE_NAME` with the standby database `db_unique_name`**.
+2. Stop the apply process on the standby database.
 
     ```
     <copy>
-    dg edit database ADGHOL1_UNIQUE_NAME set state=apply-off;
+    dg edit database adghol_site1 set state=apply-off;
     </copy>
     ```
 
@@ -133,15 +136,15 @@ The following examples show how to do it.
 
     ```
     <copy>
-    dg edit database ADGHOL1_UNIQUE_NAME set state=apply-on;
+    dg edit database adghol_site1 set state=apply-on;
     </copy>
     ```
 
-4. Stop the redo transport from the primary to the standby database(s). **Speficy the primary `db_unique_name` this time.**
+4. Stop the redo transport from the primary to the standby database(s). **Note:** we speficy the primary `db_unique_name` this time.
 
     ```
     <copy>
-    dg edit database ADGHOL0_UNIQUE_NAME set state=transport-off;
+    dg edit database adghol_site0 set state=transport-off;
     </copy>
     ```
 
@@ -149,7 +152,7 @@ The following examples show how to do it.
 
     ```
     <copy>
-    dg edit database ADGHOL0_UNIQUE_NAME set state=transport-on;
+    dg edit database adghol_site0 set state=transport-on;
     </copy>
     ```
 
@@ -157,7 +160,7 @@ The following examples show how to do it.
 
     ```
     <copy>
-    dg edit database ADGHOL1_UNIQUE_NAME set property logshipping=off;
+    dg edit database adghol_site1 set property logshipping=off;
     </copy>
     ```
 
@@ -166,7 +169,7 @@ The following examples show how to do it.
 7. Restart the log shipping to the standby database.
     ```
     <copy>
-    dg edit database ADGHOL1_UNIQUE_NAME set property logshipping=on;
+    dg edit database adghol_site1 set property logshipping=on;
     </copy>
     ```
 
@@ -180,21 +183,22 @@ Oracle Data Guard exposes many fixed views that help observe and monitor the Dat
 
     ```
     <copy>
-    sql sys/WElcome123##@adghol0_dgci as sysdba
+    sql sys/WElcome123##@adghol_site0 as sysdba
     </copy>
     ```
      
-2. Query `v$dataguard_config`:
+2. Query `v$dg_broker_config`:
 
     ```
     <copy>
-    select * from v$dataguard_config;
+    select database, connect_identifier, dataguard_role, redo_source, severity, switchover_ready, failover_ready, transport_mode
+    from v$dg_broker_config;
     </copy>
     ```
 
-    ![Content of the v$dataguard_config view](images/v-dataguard-config-primary.png)
+    ![Content of the v$dg_broker_config view](images/v-dataguard-config-primary.png)
 
-    The view `v$dataguard_config` contains the configuration members. The content is the same on the primary and standby databases, and it's helpful to understand the topology.
+    The view `v$dg_broker_config` contains the configuration members. The content is the same on the primary and standby databases, and it's helpful to understand the topology.
 
 3. Query the broker properties from `v$dg_broker_property`:
 
@@ -230,13 +234,14 @@ Oracle Data Guard exposes many fixed views that help observe and monitor the Dat
 
     ```
     <copy>
-    connect sys/WElcome123##@adghol1_dgci as sysdba
+    connect sys/WElcome123##@adghol_site1 as sysdba
     </copy>
     ```
 
     ```
     <copy>
-    select * from v$dataguard_config;
+    select database, connect_identifier, dataguard_role, redo_source, severity, switchover_ready, failover_ready, transport_mode
+    from v$dg_broker_config;
     </copy>
     ```
 
@@ -284,6 +289,7 @@ During the validation in Task 2 we have seen that we must enable flashback on th
 
     ```
     <copy>
+    -- to exeute when connected to adghol_site1
     select flashback_on from v$database;
     alter database flashback on;
     </copy>
@@ -318,7 +324,7 @@ During the validation in Task 2 we have seen that we must enable flashback on th
     (Alternatively, you could use the DG command equivalent for it):
     ```
     <copy>
-    dg edit database ADGHOL1_UNIQUE_NAME set state=apply-off;
+    dg edit database adghol_site1 set state=apply-off;
     </copy>
     ```
 
@@ -349,12 +355,12 @@ During the validation in Task 2 we have seen that we must enable flashback on th
     </copy>
     ```
 
-    ![Enable flashback logging and start the apply process using the new PL/SQL API.](images/plsql-stop-apply.png)
+    ![Enable flashback logging and start the apply process using the new PL/SQL API.](images/plsql-start-apply.png)
 
     (Alternatively, you could use the DG command equivalent for it):
     ```
     <copy>
-    dg edit database ADGHOL1_UNIQUE_NAME set state=apply-on;
+    dg edit database adghol_site1 set state=apply-on;
     </copy>
     ```
 
@@ -373,4 +379,4 @@ You have successfully verified and altered the Oracle Data Guard configuration. 
 
 - **Author** - Ludovico Caldara, Product Manager Data Guard, Active Data Guard and Flashback Technologies
 - **Contributors** - Robert Pastijn
-- **Last Updated By/Date** -  Ludovico Caldara, July 2024
+- **Last Updated By/Date** -  Ludovico Caldara, July 2025
